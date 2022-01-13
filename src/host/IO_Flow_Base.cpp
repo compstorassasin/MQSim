@@ -110,7 +110,7 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 		break;
 	}
 	}
-	
+
 	IO_Flow_Base::~IO_Flow_Base()
 	{
 		log_file.close();
@@ -142,7 +142,12 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 		if (enabled_logging) {
 			log_file.open(logging_file_path, std::ofstream::out);
 		}
-		log_file << "SimulationTime(us)\t" << "ReponseTime(us)\t" << "EndToEndDelay(us)"<< std::endl;
+		if (logging_period) {
+			log_file << "SimulationTime(us)\t" << "ReponseTime(us)\t" << "EndToEndDelay(us)"<< std::endl;
+		} else {
+			log_file << "SimulationTime(ns)\t" << "ReponseTime(ns)\t" << "EndToEndDelay(ns)"<< std::endl;
+		}
+
 		STAT_sum_device_response_time_short_term = 0;
 		STAT_serviced_request_count_short_term = 0;
 	}
@@ -151,7 +156,7 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 	{
 		sim_time_type device_response_time = Simulator->Time() - request->Enqueue_time;
 		sim_time_type request_delay = Simulator->Time() - request->Arrival_time;
-		
+
 		STAT_serviced_request_count++;
 		STAT_serviced_request_count_short_term++;
 		STAT_sum_device_response_time += device_response_time;
@@ -235,12 +240,16 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 				next_progress_step += 5;
 		}
 
-		if (Simulator->Time() > next_logging_milestone) {
-			log_file << Simulator->Time() / SIM_TIME_TO_MICROSECONDS_COEFF << "\t" << Get_device_response_time_short_term() << "\t" << Get_end_to_end_request_delay_short_term() << std::endl;
-			STAT_sum_device_response_time_short_term = 0;
-			STAT_sum_request_delay_short_term = 0;
-			STAT_serviced_request_count_short_term = 0;
-			next_logging_milestone = Simulator->Time() + logging_period;
+		if (logging_period) {
+			if (Simulator->Time() > next_logging_milestone) {
+				log_file << Simulator->Time() / SIM_TIME_TO_MICROSECONDS_COEFF << "\t" << Get_device_response_time_short_term() << "\t" << Get_end_to_end_request_delay_short_term() << std::endl;
+				STAT_sum_device_response_time_short_term = 0;
+				STAT_sum_request_delay_short_term = 0;
+				STAT_serviced_request_count_short_term = 0;
+				next_logging_milestone = Simulator->Time() + logging_period;
+			}
+		} else {
+			log_file << Simulator->Time() << "\t" << device_response_time << "\t" << request_delay << std::endl;
 		}
 	}
 
@@ -272,7 +281,7 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 			STAT_min_request_delay = request_delay;
 		}
 		STAT_transferred_bytes_total += request->LBA_count * SECTOR_SIZE_IN_BYTE;
-		
+
 		if (request->Type == Host_IO_Request_Type::READ) {
 			STAT_serviced_read_request_count++;
 			STAT_sum_device_response_time_read += device_response_time;
@@ -312,7 +321,7 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 		delete request;
 
 		nvme_queue_pair.Submission_queue_head = cqe->SQ_Head;
-		
+
 		//MQSim always assumes that the request is processed correctly, so no need to check cqe->SF_P
 
 		//If the submission queue is not full anymore, then enqueue waiting requests
@@ -364,20 +373,24 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 			next_progress_step += 5;
 		}
 
-		if (Simulator->Time() > next_logging_milestone) {
-			log_file << Simulator->Time() / SIM_TIME_TO_MICROSECONDS_COEFF << "\t" << Get_device_response_time_short_term() << "\t" << Get_end_to_end_request_delay_short_term() << std::endl;
-			STAT_sum_device_response_time_short_term = 0;
-			STAT_sum_request_delay_short_term = 0;
-			STAT_serviced_request_count_short_term = 0;
-			next_logging_milestone = Simulator->Time() + logging_period;
+		if (logging_period) {
+			if (Simulator->Time() > next_logging_milestone) {
+				log_file << Simulator->Time() / SIM_TIME_TO_MICROSECONDS_COEFF << "\t" << Get_device_response_time_short_term() << "\t" << Get_end_to_end_request_delay_short_term() << std::endl;
+				STAT_sum_device_response_time_short_term = 0;
+				STAT_sum_request_delay_short_term = 0;
+				STAT_serviced_request_count_short_term = 0;
+				next_logging_milestone = Simulator->Time() + logging_period;
+			}
+		} else {
+			log_file << Simulator->Time() << "\t" << device_response_time << "\t" << request_delay << std::endl;
 		}
 	}
-	
+
 	Submission_Queue_Entry* IO_Flow_Base::NVMe_read_sqe(uint64_t address)
 	{
 		Submission_Queue_Entry* sqe = new Submission_Queue_Entry;
 		Host_IO_Request* request = request_queue_in_memory[(uint16_t)((address - nvme_queue_pair.Submission_queue_memory_base_address) / sizeof(Submission_Queue_Entry))];
-		
+
 		if (request == NULL) {
 			throw std::invalid_argument(this->ID() + ": Request to access a submission queue entry that does not exist.");
 		}
@@ -519,7 +532,7 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 
 		return (uint32_t)(STAT_sum_request_delay_short_term / STAT_serviced_request_count_short_term / SIM_TIME_TO_MICROSECONDS_COEFF);
 	}
-	
+
 	void IO_Flow_Base::Report_results_in_XML(std::string name_prefix, Utils::XmlWriter& xmlwriter)
 	{
 		std::string tmp = name_prefix + ".IO_Flow";
