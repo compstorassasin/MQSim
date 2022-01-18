@@ -1,9 +1,13 @@
+# ASSASIN Extension
+1. Extend trace-based MQSim simulation to trace and report IO latency for each IO request
+2. Update interface parameters to model requestors that are inside the storage device. See `cstorageconf.xml`
+
 # MQSim: A Simulator for Modern NVMe and SATA SSDs
 
 
 ## Usage in Linux
 Run following commands:
-	
+
 ```
 $ make
 $ ./MQSim -i <SSD Configuration File> -w <Workload Definition File>
@@ -19,10 +23,10 @@ $ ./MQSim -i <SSD Configuration File> -w <Workload Definition File>
 Example command line execution:
 
 ```
-$ MQSim.exe -i <SSD Configuration File> -w <Workload Definition File> 
+$ MQSim.exe -i <SSD Configuration File> -w <Workload Definition File>
 ```
 
-## MQSim Execution Configurations 
+## MQSim Execution Configurations
 
 You can specify your preferred SSD configuration in the XML format. If the SSD configuration file specified in the command line does not exist, MQSim will create a sample XML file in the specified path. Here are the definitions of configuration parameters available in the XML file:
 
@@ -133,7 +137,7 @@ The following parameters are used to define a trace-based workload:
 11. **Time_Unit:** the unit of arrival times in the input trace file. Range = {PICOSECOND, NANOSECOND, MICROSECOND}
 
 ### Defining a Synthetic Workload
-You can define a synthetic workload for MQSim, using the <IO_Flow_Parameter_Set_Synthetic> XML tag. 
+You can define a synthetic workload for MQSim, using the <IO_Flow_Parameter_Set_Synthetic> XML tag.
 
 The following parameters are used to define a trace-based workload:
 1. **Priority_Class:** same as trace-based parameters mentioned above.
@@ -183,7 +187,7 @@ For each defined IO_Flow, the following parameters are shown:
 12. **Bandwidth_Read:** The total read bandwidth delivered by the SSD Device in bytes per second.
 13. **Bandwidth_Write:** The total write bandwidth delivered by the SSD Device in bytes per second.
 14. **Device_Response_Time:** The average SSD device response time for a request, in nanoseconds. This is defined as the time between enqueueing the request in the I/O submission queue, and removing it from the I/O completion queue.
-15. **Min_Device_Response_Time:** The minimum SSD device response time for a request, in nanoseconds. 
+15. **Min_Device_Response_Time:** The minimum SSD device response time for a request, in nanoseconds.
 16. **Max_Device_Response_Time:** The maximum SSD device response time for a request, in nanoseconds.
 17. **End_to_End_Request_Delay:** The average delay between generating an I/O request and receiving a corresponding answer. This is defined as the difference between the request arrival time, and its removal time from the I/O completion queue. Note that the request arrival_time is the same as the request enqueue_time, when using the multi-queue properties of NVMe drives.
 18. **Min_End_to_End_Request_Delay:** The minimum end-to-end request delay.
